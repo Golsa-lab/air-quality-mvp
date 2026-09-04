@@ -1,0 +1,193 @@
+/* foglio di stile globale */
+:root {
+  --paper: #eceeec;
+  --paper-raised: #f6f7f6;
+  --ink: #161a19;
+  --ink-soft: #5c6462;
+  --rule: #ccd2cf;
+  --over: #9e2b20; /* sopra il limite di legge */
+  --under: #2c5f55; /* entro il limite */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* I dati devono allinearsi in colonna per essere leggibili a colpo d'occhio. */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.page {
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 5rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 620;
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.sub {
+  color: var(--ink-soft);
+  margin: 0.35rem 0 0;
+  max-width: 46ch;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 2rem 0 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+select,
+input[type="date"],
+input[type="text"] {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper-raised);
+  color: var(--ink);
+}
+
+select:focus-visible,
+input:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.panel {
+  margin-top: 2.5rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  padding: 0 0.6rem 0.5rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+th.r,
+td.r {
+  text-align: right;
+}
+
+td {
+  padding: 0.5rem 0.6rem 0.5rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Proporzione delle rilevazioni sopra il limite, disegnata nella riga stessa. */
+.bar {
+  height: 5px;
+  background: var(--rule);
+  border-radius: 2px;
+  min-width: 4rem;
+}
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--over);
+  border-radius: 2px;
+}
+
+.over {
+  color: var(--over);
+  font-weight: 600;
+}
+.under {
+  color: var(--under);
+}
+
+.note {
+  border-left: 3px solid var(--over);
+  padding: 0.7rem 0.9rem;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  max-width: 58ch;
+}
+
+button {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  background: var(--ink);
+  color: var(--paper);
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ask {
+  display: flex;
+  gap: 0.5rem;
+}
+.ask input {
+  flex: 1;
+}
+
+.msg {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--rule);
+  white-space: pre-wrap;
+}
+.msg .who {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  margin-bottom: 0.2rem;
+}
+
+/* Quali strumenti hanno prodotto la risposta ? */
+.trace {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  margin-top: 0.4rem;
+}
