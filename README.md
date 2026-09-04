@@ -180,7 +180,8 @@ un prototipo mi sembra un rischio maggiore del problema che risolve.
 ## Uso di AI
 
 Ho lavorato con un assistente AI per l'esplorazione iniziale del dataset e per
-scrivere il codice. Le decisioni che ho descritto qui : lo schema, il punto in
+aiutarmi con la sintassi dei linguaggi mentre scrivevo il codice. 
+Le decisioni che ho descritto qui : lo schema, il punto in
 cui scartare i dati non validi, il tool calling al posto del text-to-SQL, la
 rinuncia all'ORM e alla libreria di grafici, la scelta di lasciare aperto
 l'avviso su postcss sono mie, e sono le stesse che avevo descritto via email
