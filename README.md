@@ -38,19 +38,18 @@ CSV ──▶ ingest (Python) ──▶ Postgres ──▶ dominio (TS) ──�
 
 | Livello | File | Cosa fa |
 |---|---|---|
-
 | Ingest | `ingest/ingest.py` | Pulisce i CSV e li carica. Si esegue una volta. |
 | Schema | `db/schema.sql` | Due tabelle: `sensors`, `measurements`. |
 | Dominio | `src/lib/domain.ts` | Tutto l'SQL e tutta la logica sulle soglie. |
 | Configurazione | `src/lib/pollutants.ts` | Limiti e basi temporali. Nessun accesso al DB. |
-| API | `src/app/api/*` | Espone il dominio su HTTP. |
+| API | `src/app/api/*` | Espone il dominio su HTTP. Nessuna logica. |
 | Pagina | `src/components/*` | Filtri, tabella dei superamenti, grafico. |
 | Assistente | `src/lib/tools.ts`, `assistant.ts` | Tool calling sopra lo stesso dominio. |
 
 **Perché la pagina e l'assistente passano tutti e due dal dominio?** Se ognuno
 si scrivesse le proprie query, prima o poi darebbero due numeri diversi per la
 stessa domanda. In uno strumento che serve a compilare una relazione ufficiale
-e' molto problematico. Con un solo punto di verità, se correggo
+è molto problematico. Con un solo punto di verità, se correggo
 un'aggregazione la correzione arriva a tutti e due nello stesso momento.
 
 ## Cosa ho trovato nei dati
