@@ -4,7 +4,6 @@ Strumento per leggere i dati ARPA Lombardia sulla qualità dell'aria: quante
 volte i limiti di legge sono stati superati, dove, e come sono andate le cose
 nel tempo. C'è anche un assistente a cui si possono fare domande in italiano.
 
-È un prototipo. Più avanti ho descritto cosa ho sviluppato (quale parti) e cosa ho lasciato fuori e perché.
 
 ## Avvio
 
@@ -52,10 +51,8 @@ stessa domanda. In uno strumento che serve a compilare una relazione ufficiale
 è molto problematico. Con un solo punto di verità, se correggo
 un'aggregazione la correzione arriva a tutti e due nello stesso momento.
 
-## Cosa ho trovato nei dati
+## Considerazioni sui dati :
 
-Ho esplorato il dataset prima di scrivere codice. Quattro cose hanno cambiato
-il progetto.
 
 **Le granularità non coincidono.** NO2 e ozono sono orari, circa 24 rilevazioni
 al giorno per sensore; PM10 e PM2.5 sono giornalieri. Anche i limiti di legge
@@ -140,27 +137,7 @@ risultato ha sempre l'aria di essere giusto.
 Lo script applica la stessa deduplicazione dell'ingest, altrimenti i due
 percorsi non sarebbero confrontabili e resterebbero distanti di quelle 12 righe.
 
-## Cosa non ho costruito, e perché
 
-**Il frontend è volutamente minimale.** Filtri, una tabella, un grafico. Il
-grafico l'ho scritto in SVG a mano invece di aggiungere una libreria: l'unica
-cosa che deve fare bene è mettere il limite di legge sullo stesso asse dei dati,
-ed è una linea tratteggiata. Il tempo l'ho messo sul percorso dal dato grezzo
-alla risposta corretta, che è dove un errore non si nota e falsa tutto il resto.
-
-
-**mappa.** Le coordinate sono già nel database e la tabella `sensors` è
-pronta, ma su quattordici comuni una mappa avrebbe raccontato meno di una
-tabella ordinata per numero di superamenti.
-
-**Nessuna soglia oltre le quattro dichiarate.** Le normative sulla qualità
-dell'aria hanno più indicatori di questi, comprese le soglie giornaliere OMS che
-sono più severe di quelle UE. Quali usare è una decisione di dominio, non
-tecnica, e non mi sembrava una cosa da decidere da sola.
-
-**Il periodo di default è tutto il dataset.** Non c'è un concetto di "ultimi
-trenta giorni" perché i dati si fermano ad agosto 2026 e un default relativo a
-oggi darebbe una pagina vuota.
 
 ## Dipendenze
 
@@ -177,12 +154,3 @@ Nella linea 15.x non c'è ancora una versione corretta e
 l'unica alternativa sarebbe Next 16, un major con modifiche incompatibili: su
 un prototipo mi sembra un rischio maggiore del problema che risolve.
 
-## Uso di AI
-
-Ho lavorato con un assistente AI per l'esplorazione iniziale del dataset e per
-aiutarmi con la sintassi dei linguaggi mentre scrivevo il codice. 
-Le decisioni che ho descritto qui : lo schema, il punto in
-cui scartare i dati non validi, il tool calling al posto del text-to-SQL, la
-rinuncia all'ORM e alla libreria di grafici, la scelta di lasciare aperto
-l'avviso su postcss sono mie, e sono le stesse che avevo descritto via email
-prima di cominciare a scrivere.
