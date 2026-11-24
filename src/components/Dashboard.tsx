@@ -2,9 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { ExceedanceResult, Period, TrendResult } from "@/lib/domain";
-import { POLLUTANTS, POLLUTANT_KEYS, type PollutantKey } from "@/lib/pollutants";
+import {
+  POLLUTANTS,
+  POLLUTANT_KEYS,
+  type Basis,
+  type PollutantKey,
+} from "@/lib/pollutants";
 import TrendChart from "./TrendChart";
 import Assistant from "./Assistant";
+
+/** How the limit's averaging period reads in the section heading. */
+const BASIS_LABEL: Record<Basis, string> = {
+  hourly: " su base oraria",
+  daily: " su media giornaliera",
+  annual: " su media annuale",
+};
 
 async function getJSON<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -116,7 +128,7 @@ export default function Dashboard({
       <section className="panel">
         <h2>
           Superamenti — limite {cfg.limit} {cfg.unit}
-          {cfg.limitBasis === "hourly" ? " su base oraria" : " su media giornaliera"}
+          {BASIS_LABEL[cfg.limitBasis]}
         </h2>
 
         {loading && <p className="sub">Caricamento…</p>}
