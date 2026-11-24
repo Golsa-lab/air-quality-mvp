@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="0.6" stop-color="#FBF6F7"/><stop offset="1" stop-color="#F3E3E7"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#000" stroke-opacity="0.035"/></pattern>
+  </defs>
+  <rect width="1200" height="320" rx="18" fill="url(#bg)" stroke="#EAD0D6" stroke-width="2"/>
+  <rect width="1200" height="320" rx="18" fill="url(#grid)"/>
+  <!-- trend vs legal limit -->
+  <g transform="translate(660,60)">
+    <line x1="0" y1="70" x2="480" y2="70" stroke="#8C1C3A" stroke-width="1.6" stroke-dasharray="6 5"/>
+    <text x="480" y="60" text-anchor="end" font-family="Menlo, Consolas, monospace" font-size="11" fill="#8C1C3A">legal limit · 50 µg/m³</text>
+    <path d="M0 80 L12 40 L22 95 L34 55 L46 66 L58 28 L70 36 L80 22 L92 48 L104 20 L116 60 L128 130 L140 160 L156 118 L170 150 L186 104 L200 140 L216 122 L232 150 L250 112 L268 136 L286 96 L304 126 L322 108 L340 140 L360 100 L378 118 L396 92 L414 130 L432 104 L450 140 L466 118 L480 126"
+          fill="none" stroke="#1A1A1D" stroke-width="2" stroke-linejoin="round"/>
+    <g fill="#8C1C3A"><circle cx="12" cy="40" r="4"/><circle cx="58" cy="28" r="4"/><circle cx="70" cy="36" r="4"/><circle cx="80" cy="22" r="4"/><circle cx="92" cy="48" r="4"/><circle cx="104" cy="20" r="4"/><circle cx="116" cy="60" r="4"/></g>
+    <line x1="0" y1="190" x2="480" y2="190" stroke="#1A1A1D" stroke-opacity=".2"/>
+    <g font-family="Menlo, Consolas, monospace" font-size="12" fill="#5E1224">
+      <rect x="0" y="204" width="128" height="28" rx="14" fill="#FFFFFF" stroke="#8C1C3A"/><text x="64" y="223" text-anchor="middle">get_trend()</text>
+      <rect x="142" y="204" width="164" height="28" rx="14" fill="#FFFFFF" stroke="#8C1C3A"/><text x="224" y="223" text-anchor="middle">get_exceedances()</text>
+      <rect x="320" y="204" width="160" height="28" rx="14" fill="#5E1224"/><text x="400" y="223" text-anchor="middle" fill="#FFFFFF">no SQL from LLM</text>
+    </g>
+  </g>
+  <g font-family="Georgia, 'Times New Roman', serif">
+    <text x="60" y="124" font-size="54" fill="#1A1A1D" letter-spacing="1">Air Quality MVP</text>
+    <text x="62" y="166" font-size="22" font-style="italic" fill="#8C1C3A">an LLM agent you can audit, on ARPA Lombardia data</text>
+  </g>
+  <rect x="62" y="196" width="64" height="3" fill="#8C1C3A"/>
+  <text x="62" y="234" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1A1A1D" fill-opacity=".6" letter-spacing="1.4">TOOL CALLING · NEXT.JS · TYPESCRIPT · POSTGRESQL · PYTHON ETL · DOCKER</text>
+  <text x="62" y="262" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1A1A1D" fill-opacity=".6" letter-spacing="1.4">116 498 READINGS · 45 SENSORS · 4 POLLUTANTS</text>
+</svg>
