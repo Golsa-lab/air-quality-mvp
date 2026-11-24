@@ -1,156 +1,276 @@
-# Qualità dell'aria — MVP
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Air Quality MVP: an LLM agent you can audit, on ARPA Lombardia data" width="100%">
+</p>
 
-Strumento per leggere i dati ARPA Lombardia sulla qualità dell'aria: quante
-volte i limiti di legge sono stati superati, dove, e come sono andate le cose
-nel tempo. C'è anche un assistente a cui si possono fare domande in italiano.
+<p align="center">
+  <img src="https://img.shields.io/badge/LLM-tool%20calling-8C1C3A?style=flat-square&labelColor=5E1224" alt="LLM tool calling">
+  <img src="https://img.shields.io/badge/Next.js-15-8C1C3A?style=flat-square&logo=nextdotjs&logoColor=white&labelColor=5E1224" alt="Next.js 15">
+  <img src="https://img.shields.io/badge/TypeScript-strict-8C1C3A?style=flat-square&logo=typescript&logoColor=white&labelColor=5E1224" alt="TypeScript">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-8C1C3A?style=flat-square&logo=postgresql&logoColor=white&labelColor=5E1224" alt="PostgreSQL 16">
+  <img src="https://img.shields.io/badge/Python-ETL-8C1C3A?style=flat-square&logo=python&logoColor=white&labelColor=5E1224" alt="Python ETL">
+  <img src="https://img.shields.io/badge/Docker-compose-8C1C3A?style=flat-square&logo=docker&logoColor=white&labelColor=5E1224" alt="Docker">
+  <img src="https://img.shields.io/badge/tests-vitest-8C1C3A?style=flat-square&logo=vitest&logoColor=white&labelColor=5E1224" alt="Vitest">
+</p>
 
+<p align="center"><i>
+How often were the legal limits exceeded, where, and how did it evolve?<br>
+You can read the answer on a dashboard or ask for it in plain Italian, and both give the same number.
+</i></p>
 
-## Avvio
+---
+
+## ✦ Contents
+
+- [What it is](#-what-it-is)
+- [Architecture](#-architecture)
+- [The data is messier than it looks](#-the-data-is-messier-than-it-looks)
+- [The assistant: tool calling, not text-to-SQL](#-the-assistant-tool-calling-not-text-to-sql)
+- [Verification](#-verification)
+- [Results](#-results)
+- [Run it](#-run-it)
+- [Repository layout](#-repository-layout)
+
+---
+
+## ✦ What it is
+
+A full-stack tool over six months of **ARPA Lombardia** air-quality measurements (PM10, PM2.5, NO₂, O₃; 45 sensors;
+26 Feb – 27 Aug). It has two ways in:
+
+- a **dashboard** with pollutant, comune and date filters, a per-comune exceedance table and a daily-mean chart against the legal limit
+- an **assistant** you can ask questions in Italian. It answers by calling typed tools, so it never writes SQL and never sees the database.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-pm10.png" alt="Dashboard, PM10: 103 exceedances out of 1928 valid readings" width="92%"><br>
+  <sub><b>PM10.</b> 103 exceedances out of 1 928 valid readings, ranked by comune. Daily means above the 50 µg/m³ limit are marked in red.</sub>
+</p>
+
+---
+
+## ✦ Architecture
+
+<p align="center">
+  <img src="docs/assets/architecture.svg" alt="Architecture: CSV → ingest → PostgreSQL → domain → API/dashboard and tools/LLM agent" width="100%">
+</p>
+
+Data flows **in one direction only**, and every number passes through a single domain layer:
+
+| Layer | File | Responsibility |
+|:--|:--|:--|
+| Ingest | `ingest/ingest.py` | Cleans the CSVs and bulk-loads them. Runs once. |
+| Schema | `db/schema.sql` | `sensors`, `measurements`, PK on `(idsensore, measured_at)`, indexes on time and `(pollutant, comune)` |
+| Domain | `src/lib/domain.ts` | **All the SQL and all threshold logic.** Nothing else talks to the database. |
+| Configuration | `src/lib/pollutants.ts` | Limits and time bases. No DB access, so it is unit-testable on its own. |
+| API | `src/app/api/*` | Exposes the domain over HTTP, with validation and no business logic |
+| UI | `src/components/*` | Filters, exceedance table, SVG trend chart, chat |
+| Assistant | `src/lib/tools.ts`, `assistant.ts` | Tool calling on top of the same domain functions |
+
+> [!IMPORTANT]
+> **Why do the page and the assistant both go through the domain?** If each wrote its own queries, sooner or later they
+> would give two different numbers for the same question. That is unacceptable in a tool meant for an official report.
+> With one source of truth, a fix to an aggregation reaches both consumers at the same moment.
+
+---
+
+## ✦ The data is messier than it looks
+
+Four details in the source data would each have quietly produced wrong numbers.
+
+<table>
+<tr><td width="34"><b>1</b></td><td>
+
+**Granularities do not match.** NO₂ and O₃ are **hourly** (~24 readings/day/sensor), PM10 and PM2.5 are **daily**, and the
+legal limits are defined on their own time bases. A single aggregation function would be wrong for half the pollutants.
+So `pollutants.ts` stores `limitBasis` and `dataBasis` as **separate fields**, and `comparisonMode()` decides between
+`direct`, `aggregate` and `not-computable` before any SQL runs.
+
+</td></tr>
+<tr><td><b>2</b></td><td>
+
+**Missing values are `-9999` with `stato = 'NA'`.** There are 2 346 of 118 856 records. They are dropped **at ingest**, so `measurements`
+can never hold a value that must not be averaged, and no query downstream has to remember a `WHERE` clause. A single
+forgotten filter would shift a mean by thousands of units with no warning.
+The CSV is read with Python's `csv` module, not pandas, because pandas turns the string `NA` into `NaN` and the rows to
+reject disappear before they are seen.
+
+</td></tr>
+<tr><td><b>3</b></td><td>
+
+**Twelve exact repeats.** There are 12 `(sensor, timestamp)` pairs with identical values, clustered at two instants, which points to an upstream
+batch being re-emitted. They were not spotted during exploration. The **primary key rejected them** on the first load.
+They are deduplicated at ingest and the constraint stays in place, since it is what caught them. If two rows ever share a key
+with **different** values, ingest **stops with an error**, because choosing one would mean inventing data.
+
+</td></tr>
+<tr><td><b>4</b></td><td>
+
+**The PM2.5 limit cannot be computed here.** It is an **annual** mean (25 µg/m³) and the dataset covers six months.
+The app returns `computable: false` with a reason instead of a number that would look official, both in the UI and in the assistant's answers.
+
+</td></tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/pm25-not-computable.png" alt="PM2.5: the annual limit cannot be computed on six months of data" width="92%"><br>
+  <sub>For PM2.5 the dashboard explains why there is no number instead of showing one.</sub>
+</p>
+
+---
+
+## ✦ The assistant: tool calling, not text-to-SQL
+
+The model **never sees the database and never writes SQL**. It chooses which tool to call and with which arguments.
+The numbers come back from the domain layer, and the model only phrases them.
+
+| Tool | Backed by | Purpose |
+|:--|:--|:--|
+| `get_metadata` | `getMetadata()` | Available comuni and the actual period covered. Called first when no period is given. |
+| `get_exceedances` | `getExceedances()` | Readings above the limit per comune |
+| `get_trend` | `getTrend()` | Daily-mean series for trend questions |
+| `get_comune_summary` | `getComuneSummary()` | Mean, max and exceedances for every pollutant in one comune |
+| `get_stations` | `getStations()` | Which station measures what, and where |
+
+```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#FBF6F7','primaryTextColor':'#1A1A1D','primaryBorderColor':'#8C1C3A','lineColor':'#8C1C3A','secondaryColor':'#F3E3E7','tertiaryColor':'#FFFFFF','actorBkg':'#FBF6F7','actorBorder':'#8C1C3A','signalColor':'#8C1C3A','noteBkgColor':'#F3E3E7','noteBorderColor':'#8C1C3A','fontFamily':'Helvetica, Arial, sans-serif'}}}%%
+sequenceDiagram
+    participant U as User
+    participant A as ask()
+    participant M as LLM
+    participant T as runTool()
+    participant D as domain.ts
+    U->>A: "Com'è messa Monza?"
+    A->>M: system prompt + history + question + 5 tool schemas
+    M-->>A: tool_call get_comune_summary{comune, from, to}
+    A->>T: validate args
+    alt invalid
+        T-->>A: { error: "Serve il nome del comune." }
+        A->>M: error as tool result, model corrects itself
+    else valid
+        T->>D: getComuneSummary("Monza", period)
+        D-->>A: aggregated numbers only
+    end
+    A->>M: tool result
+    M-->>A: answer in Italian
+    A-->>U: answer + tool trace
+```
+
+**Why not let the model generate SQL?** On a small dataset text-to-SQL works almost every time, and that is the problem.
+When it fails it produces a **plausible number instead of an error**, and the reader has no way to notice. With typed tools:
+
+- **The set of possible actions is closed.** Pollutants are an `enum`, dates are validated, unknown tools are rejected.
+- **Errors make the model correct itself instead of crashing the request.** `runTool()` turns bad arguments into an error message the model can read.
+- **Answers can be audited.** The UI shows which tools produced each answer.
+- **Cost per question is constant.** Only aggregated results enter the context, never raw rows.
+- **The design extends easily.** A new capability is one entry in `tools.ts` plus one domain function.
+
+**Loop details** (`assistant.ts`): plain `fetch` against any **OpenAI-compatible** endpoint (about twenty lines, no SDK lock-in),
+`temperature: 0`, at most **5 steps** so a malformed conversation cannot loop forever, and a system prompt that
+requires every number to come from a tool.
+
+> [!TIP]
+> **The model is an environment variable**, not a constant in the code. During development the chosen model was retired by the provider,
+> and replacing it took one line in `.env` and zero code changes.
+
+---
+
+## ✦ Verification
+
+Aggregation errors are invisible: the result always *looks* right. So correctness is checked along a second, independent path.
+
+| Check | How | Status |
+|:--|:--|:--|
+| Pure logic | `vitest`: sensor-type strings, time-base comparison, the PM2.5 refusal, validation of model-supplied keys | ✅ 6 / 6 |
+| Types | `tsc --noEmit` | ✅ |
+| SQL aggregations | `ingest/verify.py` recomputes the same figures with **pandas, directly from the CSVs**, without touching the DB, using the same deduplication | ✅ matches the API |
+
+One test does more than it looks: it pins the exact `nometiposensore` strings. If ARPA renames a sensor type, every query
+would silently return zero rows, and this test makes that failure loud.
+
+---
+
+## ✦ Results
+
+Whole period, the three pollutants for which the limit is computable:
+
+| Pollutant | Limit | Valid readings | Exceedances | Max | Worst comuni |
+|:--|:--|--:|--:|--:|:--|
+| **PM10** | 50 µg/m³, daily | 1 928 | **103** | 78.0 | Milano 33 · Monza 20 · Meda 15 |
+| **O₃** | 180 µg/m³, hourly | 33 468 | **327** | 241.0 | Monza 221 · Arconate 37 · Pioltello 23 |
+| **NO₂** | 200 µg/m³, hourly | 79 906 | **0** | 147.6 | — |
+| **PM2.5** | 25 µg/m³, annual | — | not computable | — | dataset covers six months |
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-ozone.png" alt="Dashboard, ozone: 327 exceedances, Monza 221" width="92%"><br>
+  <sub><b>Ozone.</b> The daily mean rises through spring into summer. Monza alone accounts for 221 of the 327 hourly exceedances.</sub>
+</p>
+
+---
+
+## ✦ Run it
 
 ```bash
-docker compose up -d                    # per Postgres
+docker compose up -d                       # PostgreSQL 16
 pip install -r ingest/requirements.txt
-python ingest/ingest.py                 # carica i CSV nel database
+python ingest/ingest.py                    # load the CSVs into the database
 
-cp .env.example .env                    # e inserisci LLM_API_KEY
+cp .env.example .env                       # then set LLM_API_KEY
 npm install
-npm run dev                             # http://localhost:3000
+npm run dev                                # http://localhost:3000
 ```
 
-L'assistente usa un endpoint OpenAI-compatibile. Nel `.env.example` ho messo
-Groq, che ha un piano gratuito e non chiede la carta di credito. La dashboard funziona anche senza chiave: non funziona solo l'assistente.
+The assistant uses any **OpenAI-compatible** endpoint. `.env.example` points to Groq, which has a free tier that does not ask for a card.
+**The dashboard works without a key**. Only the assistant needs one.
 
 ```bash
-npm run test              # test sulla logica pura
+npm run test               # pure logic
 npm run typecheck
-python ingest/verify.py   # ricalcola gli stessi numeri con pandas
+python ingest/verify.py    # recompute the same numbers with pandas
 ```
 
-## Com'è fatto
+| Variable | Default |
+|:--|:--|
+| `DATABASE_URL` | `postgresql://aq:aq@localhost:5432/airquality` |
+| `LLM_BASE_URL` | `https://api.groq.com/openai/v1` |
+| `LLM_MODEL` | `llama-3.3-70b-versatile` |
+| `LLM_API_KEY` | *(required for the assistant only)* |
 
-I dati si muovono in una direzione sola:
+<details>
+<summary><b>Note on dependencies</b></summary>
+<br>
 
+Next.js and React are on the December 2025 security-patched releases (15.5.25 / 19.1.9). The project started on a version later found to be vulnerable and was upgraded during development.
+`npm audit` still reports `postcss`, a transitive dependency of Next.js. The advisories concern CSS generation and automatic source-map loading from untrusted
+input. This project has a single static stylesheet, so that path does not exist. The only fix today is Next 16, a breaking major, which on a prototype is a bigger risk than the advisory.
+
+</details>
+
+---
+
+## ✦ Repository layout
+
+```text
+air-quality-mvp/
+├── data/                    # ARPA CSVs: stations.csv, measurements.csv
+├── db/schema.sql            # 2 tables, PK + FK, indexes
+├── ingest/
+│   ├── ingest.py            # clean → dedupe → COPY
+│   └── verify.py            # independent pandas recomputation
+├── src/
+│   ├── lib/
+│   │   ├── domain.ts        # the only place with SQL
+│   │   ├── pollutants.ts    # limits & time bases (pure)
+│   │   ├── tools.ts         # 5 tool schemas + validated dispatcher
+│   │   ├── assistant.ts     # tool-calling loop (plain fetch)
+│   │   ├── db.ts · http.ts
+│   ├── app/api/             # metadata · exceedances · trend · stations · chat
+│   └── components/          # Dashboard · TrendChart · Assistant
+├── tests/pollutants.test.ts
+├── docs/                    # banner, architecture, screenshots
+└── docker-compose.yml
 ```
-CSV ──▶ ingest (Python) ──▶ Postgres ──▶ dominio (TS) ──┬──▶ API ──▶ pagina web
-                                                        └──▶ tool ──▶ assistente
-```
 
-| Livello | File | Cosa fa |
-|---|---|---|
-| Ingest | `ingest/ingest.py` | Pulisce i CSV e li carica. Si esegue una volta. |
-| Schema | `db/schema.sql` | Due tabelle: `sensors`, `measurements`. |
-| Dominio | `src/lib/domain.ts` | Tutto l'SQL e tutta la logica sulle soglie. |
-| Configurazione | `src/lib/pollutants.ts` | Limiti e basi temporali. Nessun accesso al DB. |
-| API | `src/app/api/*` | Espone il dominio su HTTP. Nessuna logica. |
-| Pagina | `src/components/*` | Filtri, tabella dei superamenti, grafico. |
-| Assistente | `src/lib/tools.ts`, `assistant.ts` | Tool calling sopra lo stesso dominio. |
+---
 
-**Perché la pagina e l'assistente passano tutti e due dal dominio?** Se ognuno
-si scrivesse le proprie query, prima o poi darebbero due numeri diversi per la
-stessa domanda. In uno strumento che serve a compilare una relazione ufficiale
-è molto problematico. Con un solo punto di verità, se correggo
-un'aggregazione la correzione arriva a tutti e due nello stesso momento.
-
-## Considerazioni sui dati :
-
-
-**Le granularità non coincidono.** NO2 e ozono sono orari, circa 24 rilevazioni
-al giorno per sensore; PM10 e PM2.5 sono giornalieri. Anche i limiti di legge
-sono definiti su basi diverse. Con una funzione di aggregazione unica avrei
-ottenuto numeri sbagliati per metà degli inquinanti, quindi in `pollutants.ts`
-la base temporale del limite e quella del dato sono due campi separati, e il
-codice li confronta prima di decidere come calcolare.
-
-**Il valore mancante è `-9999`, con `stato = 'NA'`.** Sono 2.346 record su
-118.856. Li scarto nell'ingest invece di caricarli e filtrarli nelle query:
-così la tabella `measurements` non può contenere un valore che non va mediato,
-e nessuna query a valle deve ricordarsi di escluderlo (scelta molto piu' pulita). Una riga dimenticata in
-un `WHERE` avrebbe spostato una media di migliaia di unità senza dare nessun
-segnale.
-
-Una nota : leggo il CSV con il modulo `csv` e non con pandas, perché
-pandas converte la stringa `NA` in `NaN` e le righe da riconoscere spariscono
-prima ancora di essere viste.
-
-**Dodici righe ripetute.** Il file contiene 12 coppie (sensore, istante)
-presenti due volte con lo stesso identico valore, concentrate su due momenti
-precisi: un batch riemesso a monte, non due misurazioni diverse. Non le avevo
-viste durante l'esplorazione: le ha trovate la primary key
-`(idsensore, measured_at)`, che le ha rifiutate al primo caricamento. Senza
-quel vincolo sarebbero entrate in silenzio e ogni media le avrebbe contate due
-volte. Le scarto nell'ingest e il vincolo lo lascio dov'è, visto che è quello
-che le ha scoperte. Se invece due righe con la stessa chiave avessero valori
-diversi, l'ingest si ferma con un errore: scegliere quale tenere vorrebbe dire
-inventare un dato.
-
-**Il limite PM2.5 non è calcolabile qui.** È una media annuale di 25 µg/m³, ma
-il dataset copre sei mesi (26 febbraio – 27 agosto). Restituire lo stesso un
-numero sarebbe stato  sbagliato: chi lo legge lo prende per un dato di
-legge. L'applicazione dice apertamente che non è calcolabile e spiega perché,
-sia nella pagina sia nelle risposte dell'assistente.
-
-Sui tre inquinanti calcolabili, su tutto il periodo: 103 superamenti PM10 su
-1.928 rilevazioni (Milano 33, Monza 20), 327 per l'ozono su 33.468 (Monza 221),
-nessuno per NO2, che si ferma a un massimo di 147,6 contro un limite di 200.
-
-## L'assistente
-
-Il modello non vede il database e non scrive SQL. Sceglie solo quale strumento
-chiamare e con quali argomenti; i numeri tornano dal dominio e il modello si
-limita a metterli in frasi.
-
-Gli strumenti sono cinque: `get_metadata`, `get_exceedances`, `get_trend`,
-`get_comune_summary`, `get_stations`.
-
-Ho scartato l'alternativa più ovvia, cioè far generare l'SQL al modello. Su un
-dataset piccolo funziona quasi sempre, ed è proprio questo il problema: quando
-sbaglia produce un numero plausibile invece di un errore, e chi legge non ha
-modo di accorgersene. Con strumenti tipizzati lo spazio di quello che può
-succedere è chiuso, gli argomenti non validi vengono rifiutati e rimandati
-indietro al modello perché si corregga, e sotto ogni risposta la pagina mostra
-quali strumenti sono stati usati.
-
-Ci sono anche due conseguenze pratiche. Il costo per domanda resta costante,
-perché nel contesto non entrano mai i dati ma solo il risultato
-dell'aggregazione. E per aggiungere una capacità basta aggiungere una voce in
-`tools.ts` più una funzione nel dominio: non cambia nient'altro.
-
-**Il modello è una variabile d'ambiente** (`LLM_MODEL`), non una costante nel
-codice. Mentre lavoravo, il modello che avevo scelto
-è stato ritirato dal fornitore. Sostituirlo ha richiesto una riga nel `.env` e
-zero modifiche al codice. Per lo stesso motivo il ciclo di tool calling è
-scritto con un semplice `fetch` : sono una
-ventina di righe e non legano il progetto a nessuno.
-
-## Verifica
-
-I test in `tests/` coprono la logica pura: i limiti, le basi temporali, il caso
-non calcolabile, la validazione degli argomenti che arrivano dal modello. Non
-serve il database per eseguirli.
-
-Per le aggregazioni SQL ho preso un'altra strada. `ingest/verify.py` rifà gli
-stessi conti con pandas, direttamente dai CSV, senza toccare il database. Se le
-due strade danno numeri diversi, una delle due ha un errore. È il controllo che
-mi interessava davvero, perché un errore di aggregazione non si vede: il
-risultato ha sempre l'aria di essere giusto.
-
-Lo script applica la stessa deduplicazione dell'ingest, altrimenti i due
-percorsi non sarebbero confrontabili e resterebbero distanti di quelle 12 righe.
-
-
-
-## Dipendenze
-
-Next.js e React sono alle versioni con le patch di sicurezza di dicembre 2025
-(15.5.25 e 19.1.9): il progetto era partito da una versione poi risultata
-vulnerabile, e l'ho aggiornata durante lo sviluppo.
-
-`npm audit` segnala ancora `postcss`, che arriva come dipendenza transitiva di
-Next.js. Le segnalazioni riguardano la generazione di CSS e il caricamento
-automatico delle source map, quindi valgono quando si elabora CSS proveniente
-da fonti non fidate: qui il progetto ha un unico foglio di stile statico e non
-esiste quel percorso.Quindi nessun pericolo. 
-Nella linea 15.x non c'è ancora una versione corretta e
-l'unica alternativa sarebbe Next 16, un major con modifiche incompatibili: su
-un prototipo mi sembra un rischio maggiore del problema che risolve.
-
+<p align="center">
+  <sub><b>Golsa Shokri</b> · Next.js · PostgreSQL · Python · LLM tool calling</sub>
+</p>
