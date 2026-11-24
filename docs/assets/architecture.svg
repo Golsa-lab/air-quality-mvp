@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8C1C3A"/></marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FBF6F7"/></linearGradient>
+    <style>
+      .b{fill:#FFFFFF;stroke:#8C1C3A;stroke-width:1.6}
+      .k{fill:#F3E3E7;stroke:#8C1C3A;stroke-width:1.8}
+      .x{fill:#5E1224}
+      .w{fill:none;stroke:#8C1C3A;stroke-width:1.5}
+      .d{fill:none;stroke:#8C1C3A;stroke-width:1.4;stroke-dasharray:5 4}
+      .t{font-family:Helvetica,Arial,sans-serif;font-size:14px;fill:#1A1A1D;text-anchor:middle}
+      .m{font-family:Menlo,Consolas,monospace;font-size:11px;fill:#5E1224;text-anchor:middle}
+      .l{font-family:Georgia,serif;font-style:italic;font-size:13px;fill:#8C1C3A}
+      .h{font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2px;fill:#1A1A1D;fill-opacity:.5}
+    </style>
+  </defs>
+  <rect width="1200" height="430" rx="16" fill="url(#bg)" stroke="#EAD0D6" stroke-width="2"/>
+  <text x="30" y="34" class="h">DATA FLOWS ONE WAY  ·  ONE DOMAIN LAYER  ·  TWO CONSUMERS</text>
+
+  <rect class="b" x="30" y="150" width="120" height="70" rx="8"/>
+  <text class="t" x="90" y="178">ARPA CSV</text><text class="m" x="90" y="198">118 856 rows</text>
+  <path class="w" d="M150 185 H186" marker-end="url(#a)"/>
+
+  <rect class="b" x="188" y="132" width="170" height="106" rx="8"/>
+  <text class="t" x="273" y="156">ingest.py</text>
+  <text class="m" x="273" y="176">drop −9999 / 'NA'</text>
+  <text class="m" x="273" y="192">dedupe 12 exact repeats</text>
+  <text class="m" x="273" y="208">stop on conflicts</text>
+  <text class="m" x="273" y="224">bulk COPY</text>
+  <path class="w" d="M358 185 H394" marker-end="url(#a)"/>
+
+  <rect class="b" x="396" y="140" width="150" height="90" rx="8"/>
+  <text class="t" x="471" y="166">PostgreSQL 16</text>
+  <text class="m" x="471" y="186">2 tables, FK</text>
+  <text class="m" x="471" y="202">PK (idsensore, time)</text>
+  <text class="m" x="471" y="218">Docker</text>
+  <path class="w" d="M546 185 H582" marker-end="url(#a)"/>
+
+  <rect class="k" x="584" y="118" width="190" height="134" rx="10"/>
+  <text class="t" x="679" y="144" style="font-size:15px">domain.ts</text>
+  <text class="m" x="679" y="166">all SQL, all thresholds</text>
+  <text class="m" x="679" y="182">single source of truth</text>
+  <text class="t" x="679" y="212" style="font-size:13px">pollutants.ts</text>
+  <text class="m" x="679" y="230">limit basis ≠ data basis</text>
+
+  <path class="w" d="M774 160 H820 V92 H850" marker-end="url(#a)"/>
+  <path class="w" d="M774 210 H820 V280 H850" marker-end="url(#a)"/>
+
+  <rect class="b" x="852" y="64" width="140" height="56" rx="8"/>
+  <text class="t" x="922" y="88">REST API</text><text class="m" x="922" y="106">no logic</text>
+  <path class="w" d="M992 92 H1030" marker-end="url(#a)"/>
+  <rect class="b" x="1032" y="64" width="140" height="56" rx="8"/>
+  <text class="t" x="1102" y="88">Dashboard</text><text class="m" x="1102" y="106">table · chart</text>
+
+  <rect class="b" x="852" y="252" width="140" height="56" rx="8"/>
+  <text class="t" x="922" y="276">tools.ts</text><text class="m" x="922" y="294">5 typed tools</text>
+  <path class="w" d="M992 280 H1030" marker-end="url(#a)"/>
+  <rect class="x" x="1032" y="244" width="140" height="72" rx="10"/>
+  <text class="t" x="1102" y="272" style="fill:#FFFFFF">LLM agent</text>
+  <text class="m" x="1102" y="290" style="fill:#F3E3E7">OpenAI-compatible</text>
+  <text class="m" x="1102" y="304" style="fill:#F3E3E7">temp 0 · ≤ 5 steps</text>
+  <path class="d" d="M1060 316 V348 H950 V310" marker-end="url(#a)"/>
+  <text class="l" x="958" y="366">invalid args → error back to the model</text>
+
+  <!-- independent verification -->
+  <path class="d" d="M90 220 V390 H560"/>
+  <rect class="b" x="560" y="362" width="240" height="56" rx="8" style="stroke-dasharray:5 4"/>
+  <text class="t" x="680" y="386">verify.py (pandas)</text><text class="m" x="680" y="404">recomputes from raw CSV</text>
+  <path class="d" d="M680 362 V254" marker-end="url(#a)"/>
+  <text class="l" x="690" y="300">must match</text>
+</svg>
